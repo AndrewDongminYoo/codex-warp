@@ -40,15 +40,22 @@ Keep it in sync with Warp's Codex plugin manager minimum version.
 `plugins/orchestration/skills/factory-files` is a byte-for-byte copy of
 `resources/bundled/skills/factory-files` in
 [warpdotdev/warp](https://github.com/warpdotdev/warp), mirrored at commit
-`85e89ea`. Warp bundles that skill for its own clients; Codex loads filesystem
+`f6f4ceac8`. Warp bundles that skill for its own clients; Codex loads filesystem
 skills from this plugin instead, so it is copied here rather than resolved
 from a bundle. Change it in `warpdotdev/warp` and re-mirror; edits made here
 are lost on the next sync.
 
-The skill validates against warp-server when it is reachable and falls back to
-the schemas bundled beside it otherwise, so a copy that lags the server still
-works and says that it lagged. `plugins/orchestration/tests/test-factory-files.sh`
-checks the copy arrived complete and runs; its regression corpus lives in Warp.
+The skill validates only against warp-server, which owns the Factory file
+format. It carries no copy of that format: a bundled copy ships inside a
+release, goes stale, and then reports valid fields as unknown, which invites an
+agent to delete working configuration. When the server cannot be reached the
+skill reports that the tree was not checked rather than guessing.
+
+That also keeps this mirror cheap. There is no schema here to drift, so a stale
+copy costs a stale workflow document, not a wrong verdict.
+`plugins/orchestration/tests/test-factory-files.sh` checks the copy arrived
+complete, carries no schemas, and reports a missing verdict correctly; its
+behavioural corpus lives in Warp.
 
 ## Requirements
 - Codex CLI with plugin support
