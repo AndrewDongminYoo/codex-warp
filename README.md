@@ -35,6 +35,21 @@ It validates parent-message staging/drain/blocking and plugin manifests.
 `plugins/warp/scripts/on-session-start.sh` emits `PLUGIN_VERSION`.
 Current plugin version: `0.4.0`.
 Keep it in sync with Warp's Codex plugin manager minimum version.
+## Skills
+
+`plugins/orchestration/skills/factory-files` is a byte-for-byte copy of
+`resources/bundled/skills/factory-files` in
+[warpdotdev/warp](https://github.com/warpdotdev/warp), mirrored at commit
+`85e89ea`. Warp bundles that skill for its own clients; Codex loads filesystem
+skills from this plugin instead, so it is copied here rather than resolved
+from a bundle. Change it in `warpdotdev/warp` and re-mirror; edits made here
+are lost on the next sync.
+
+The skill validates against warp-server when it is reachable and falls back to
+the schemas bundled beside it otherwise, so a copy that lags the server still
+works and says that it lagged. `plugins/orchestration/tests/test-factory-files.sh`
+checks the copy arrived complete and runs; its regression corpus lives in Warp.
+
 ## Requirements
 - Codex CLI with plugin support
 - `jq`
