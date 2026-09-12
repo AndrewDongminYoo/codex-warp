@@ -231,9 +231,36 @@ assert_json_field "oz plugin name" "$(cat "$REPO_ROOT/plugins/orchestration/.cod
 assert_contains "warp hooks use PLUGIN_ROOT" "$(cat "$REPO_ROOT/plugins/warp/hooks/hooks.json")" '${PLUGIN_ROOT}/scripts/on-session-start.sh'
 assert_contains "warp hooks include prompt submit" "$(cat "$REPO_ROOT/plugins/warp/hooks/hooks.json")" '${PLUGIN_ROOT}/scripts/on-prompt-submit.sh'
 assert_contains "warp hooks include post tool use" "$(cat "$REPO_ROOT/plugins/warp/hooks/hooks.json")" '${PLUGIN_ROOT}/scripts/on-post-tool-use.sh'
-assert_contains "oz hooks use PLUGIN_ROOT" "$(cat "$REPO_ROOT/plugins/orchestration/hooks/hooks.json")" '${PLUGIN_ROOT}/scripts/drain-mailbox.sh UserPromptSubmit'
+assert_contains "oz hooks quote PLUGIN_ROOT" "$(cat "$REPO_ROOT/plugins/orchestration/hooks/hooks.json")" '\"${PLUGIN_ROOT}/scripts/drain-mailbox.sh\" UserPromptSubmit'
 assert_contains "oz hooks include session end" "$(cat "$REPO_ROOT/plugins/orchestration/hooks/hooks.json")" '${PLUGIN_ROOT}/scripts/on-session-end.sh'
 
+echo ""
+echo "=== plugin roots with spaces ==="
+for plugin_name in warp orchestration; do
+    plugin_root="$TEST_TMP/$plugin_name plugin"
+    ln -s "$REPO_ROOT/plugins/$plugin_name" "$plugin_root"
+
+    while IFS=$'\t' read -r event_name hook_command; do
+        command_output=$(printf '%s' "$HOOK_INPUT" | env \
+            -u WARP_CLI_AGENT_PROTOCOL_VERSION \
+            -u WARP_CLIENT_VERSION \
+            -u OZ_PARENT_RUN_ID \
+            PLUGIN_ROOT="$plugin_root" \
+            sh -c "$hook_command" 2>&1)
+        command_exit=$?
+        assert_eq "$plugin_name $event_name resolves a plugin root containing spaces" "0" "$command_exit"
+        assert_eq "$plugin_name $event_name stays silent outside its host" "" "$command_output"
+    done < <(jq -r '
+        .hooks
+        | to_entries[]
+        | .key as $event
+        | .value[]
+        | .hooks[]
+        | select(.type == "command")
+        | [$event, .command]
+        | @tsv
+    ' "$REPO_ROOT/plugins/$plugin_name/hooks/hooks.json")
+done
 
 echo ""
 echo "=== Results: $PASSED passed, $FAILED failed ==="
